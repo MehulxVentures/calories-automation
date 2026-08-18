@@ -1,0 +1,46 @@
+# Works in Mac/Linux
+
+# root = "."
+# tmp_dir = "tmp"
+# env_files = [".env"]
+
+# [build]
+# cmd = "go build -o ./tmp/api ./cmd/api"
+# bin = "./tmp/api"
+# full_bin = "./tmp/api"
+
+# include_ext = ["go", "env", "sql"]
+# exclude_dir = ["tmp", "vendor"]
+# exclude_regex = ["_test\\.go"]
+# exclude_unchanged = true
+# follow_symlink = true
+# log = "air.log"
+# delay = 300
+
+# [log]
+# time = true
+
+# [misc]
+# clean_on_exit = true
+
+# Works on Windows
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o tmp\\api.exe .\\cmd\\api"
+bin = "tmp\\api.exe"
+full_bin = "tmp\\api.exe"
+
+include_ext = ["go", "env", "sql"]
+exclude_dir = ["tmp", "vendor"]
+exclude_regex = ["_test\\.go"]
+
+delay = 300
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true
