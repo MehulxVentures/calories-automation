@@ -9,6 +9,9 @@ import (
 	caloriehandlers "github.com/MehulxVentures/calories-automation/internals/calories/handlers"
 	calorierepository "github.com/MehulxVentures/calories-automation/internals/calories/repository"
 	calorieroutes "github.com/MehulxVentures/calories-automation/internals/calories/routes"
+	chathandlers "github.com/MehulxVentures/calories-automation/internals/chat/handlers"
+	chatrepository "github.com/MehulxVentures/calories-automation/internals/chat/repository"
+	chatroutes "github.com/MehulxVentures/calories-automation/internals/chat/routes"
 	"github.com/MehulxVentures/calories-automation/internals/config"
 	usagehandlers "github.com/MehulxVentures/calories-automation/internals/usage/handlers"
 	usagerepository "github.com/MehulxVentures/calories-automation/internals/usage/repository"
@@ -44,6 +47,7 @@ func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
 	authRepo := repository.NewUserRepository(db)
 	calorieRepo := calorierepository.NewRepository(db)
 	usageRepo := usagerepository.NewRepository(db)
+	chatRepo := chatrepository.NewRepository(db)
 
 	// Init Service
 	authService := services.NewAuthService(cfg)
@@ -52,6 +56,7 @@ func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(cfg, authService, authRepo)
 	calorieHandler := caloriehandlers.NewHandler(calorieRepo)
 	usageHandler := usagehandlers.NewHandler(usageRepo)
+	chatHandler := chathandlers.NewHandler(chatRepo)
 
 	// Init Middleware
 	authMiddleware := middleware.NewAuthMiddleware(cfg, authService, authRepo)
@@ -67,6 +72,10 @@ func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
 	})
 	usageroutes.Register(app, usageroutes.RouteDependencies{
 		UsageHandler:   usageHandler,
+		AuthMiddleware: authMiddleware,
+	})
+	chatroutes.Register(app, chatroutes.RouteDependencies{
+		ChatHandler:    chatHandler,
 		AuthMiddleware: authMiddleware,
 	})
 

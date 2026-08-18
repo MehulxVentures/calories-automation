@@ -3,6 +3,7 @@ import { buildCalorieGraph } from './services/graph'
 import { logger } from 'hono/logger'
 import { recordUsage } from './services/usage'
 import { cors } from 'hono/cors'
+import { createConversation, loadMessages, saveMessage } from './services/chat'
 
 const app = new Hono<{ Bindings: CloudflareBindings }>()
 
@@ -38,7 +39,7 @@ app.post("/api/v1/agent/chat", async (c) => {
 		return c.json({ error: "authentication required" }, 401)
 	}
 
-	const input = await c.req.json<{ message?: string }>().catch((): { message?: string } => ({}))
+	const input = await c.req.json<{ message?: string; conversationId?: string }>().catch((): { message?: string; conversationId?: string } => ({}))
 	const message = input.message?.trim()
 	if (!message) {
 		return c.json({ error: "message is required" }, 400)
@@ -53,6 +54,17 @@ app.post("/api/v1/agent/chat", async (c) => {
 	const { user } = await meResponse.json<{ user: { timezone: string } }>()
 
 	try {
+		const conversationId = input.conversationId ?? await createConversation(
+			c.env.GO_API_URL,
+			authorization,
+			message.slice(0, 120),
+		)
+		await saveMessage(c.env.GO_API_URL, authorization, conversationId, {
+			role: "user",
+			content: message,
+		})
+		const history = await loadMessages(c.env.GO_API_URL, authorization, conversationId)
+
 		const graph = buildCalorieGraph({
 			openRouterApiKey: c.env.OPENROUTER_KEY,
 			tavilyApiKey: c.env.TAVIY_KEY,
@@ -61,11 +73,13 @@ app.post("/api/v1/agent/chat", async (c) => {
 		})
 		const result = await graph.invoke({
 			message,
+			history,
 			now: new Date().toISOString(),
 			timezone: user.timezone,
 			extracted: null,
 			searchResult: "",
 			savedEntry: null,
+			reply: "",
 			inputTokens: 0,
 			outputTokens: 0,
 		})
@@ -76,11 +90,20 @@ app.post("/api/v1/agent/chat", async (c) => {
 			result.outputTokens,
 		))
 
-		if (!result.savedEntry) {
-			return c.json({ message: "Tell me what you consumed and I will record it." })
-		}
+		const calorieEntryId = result.savedEntry && typeof result.savedEntry === "object" && "id" in result.savedEntry
+			? String(result.savedEntry.id)
+			: undefined
+		await saveMessage(c.env.GO_API_URL, authorization, conversationId, {
+			role: "assistant",
+			content: result.reply,
+			calorieEntryId,
+		})
 
-		return c.json({ message: "Calorie entry added.", entry: result.savedEntry })
+		return c.json({
+			conversationId,
+			message: result.reply,
+			...(result.savedEntry ? { entry: result.savedEntry } : {}),
+		})
 	} catch (error) {
 		console.error(JSON.stringify({ event: "agent_error", error: error instanceof Error ? error.message : "unknown" }))
 		return c.json({ error: "could not process calorie entry" }, 502)
