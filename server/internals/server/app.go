@@ -1,10 +1,15 @@
 package server
 
 import (
+	"github.com/MehulxVentures/calories-automation/internals/auth/handlers"
+	"github.com/MehulxVentures/calories-automation/internals/auth/middleware"
+	"github.com/MehulxVentures/calories-automation/internals/auth/repository"
+	"github.com/MehulxVentures/calories-automation/internals/auth/routes"
+	"github.com/MehulxVentures/calories-automation/internals/auth/services"
 	"github.com/MehulxVentures/calories-automation/internals/config"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
@@ -27,25 +32,25 @@ func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
 	}))
 
 	// Health Route
-	app.GET("/health", HealthCheck());
+	app.GET("/health", HealthCheck())
 
 	// Init Repository
-	// userRepo := repositories.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db)
 
 	// Init Service
-	// authService := services.NewAuthService(cfg)
+	authService := services.NewAuthService(cfg)
 
 	// Init Handler
-	// authHandler := handlers.NewAuthHandler(cfg, authService, userRepo)
+	authHandler := handlers.NewAuthHandler(cfg, authService, userRepo)
 
 	// Init Middleware
-	// authMiddleware := middleware.NewAuthMiddleware(cfg, authService, userRepo)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, authService, userRepo)
 
 	// Register Routes
-	// routes.Register(app, routes.RouteDependencies{
-	// 	AuthHandler:    authHandler,
-	// 	AuthMiddleware: authMiddleware,
-	// })
+	routes.Register(app, routes.RouteDependencies{
+		AuthHandler:    authHandler,
+		AuthMiddleware: authMiddleware,
+	})
 
 	return app
 }

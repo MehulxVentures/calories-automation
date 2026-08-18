@@ -8,18 +8,20 @@ import (
 )
 
 type Config struct {
-	Port               string
-	DatabaseURL        string
-	FrontendURL        string
+	Port        string
+	DatabaseURL string
+	FrontendURL string
+	JWTSecret   string
 }
 
 func Load() (Config, error) {
 	_ = godotenv.Load()
 
 	cfg := Config{
-		Port: getEnv("PORT", "8080"),
+		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		FrontendURL: getEnv("FRONTEND_URL", ""),
+		JWTSecret:   getEnv("JWT_SECRET", ""),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -28,6 +30,10 @@ func Load() (Config, error) {
 
 	if cfg.Port == "" {
 		return Config{}, fmt.Errorf("port is required")
+	}
+
+	if cfg.JWTSecret == "" {
+		return Config{}, fmt.Errorf("jwt secret is required")
 	}
 
 	return cfg, nil
