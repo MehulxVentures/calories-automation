@@ -23,28 +23,28 @@ const data = {
   navMain: [
     {
       title: "Chat",
-      url: "/chat",
+      url: "chat",
       icon: (
         <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />
       ),
     },
     {
       title: "calories",
-      url: "/calories",
+      url: "calories",
       icon: (
         <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />
       ),
     },
     {
       title: "Usage",
-      url: "/usage",
+      url: "usage",
       icon: (
         <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />
       ),
     },
     {
       title: "Profile",
-      url: "/profile",
+      url: "profile",
       icon: (
         <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
       ),

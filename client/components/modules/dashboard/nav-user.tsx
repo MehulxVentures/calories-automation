@@ -23,6 +23,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MoreVerticalCircle01Icon, UserCircle02Icon, CreditCardIcon, Notification03Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { User } from "@/types/auth"
+import { useLogout } from "@/hooks/use-auth"
 
 export function NavUser({
   user,
@@ -30,15 +31,15 @@ export function NavUser({
   user: User
 }) {
   const { isMobile } = useSidebar();
-  // const logout = useLogout();
+  const logout = useLogout();
 
   const handleLogout = async () => {
-    // await logout.mutateAsync()
+    await logout.mutateAsync()
   };
 
   return (
     <SidebarMenu>
-      {/* <SidebarMenuItem>
+      <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
@@ -46,13 +47,12 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user?.image ?? ""} alt={user?.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{user.email.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user?.name}</span>
+                <span className="truncate font-medium">{user.email}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  @{user?.username}
+                  {user.role}
                 </span>
               </div>
               <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} className="ml-auto size-4" />
@@ -67,13 +67,12 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user?.image ?? ""} alt={user?.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{user.email.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.name}</span>
+                  <span className="truncate font-medium">{user.email}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    @{user?.username}
+                    {user.role}
                   </span>
                 </div>
               </div>
@@ -84,18 +83,14 @@ export function NavUser({
                 <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
                 Account
               </DropdownMenuItem>
-              <WalletModal>
-                <DropdownMenuItem>
-                  <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
-                  Wallet
-                </DropdownMenuItem>
-              </WalletModal>
-              <NotificationModal>
-                <DropdownMenuItem>
-                  <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
-                  Notifications
-                </DropdownMenuItem>
-              </NotificationModal>
+              <DropdownMenuItem>
+                <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
+                Billing
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
+                Notifications
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
@@ -104,7 +99,7 @@ export function NavUser({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem> */}
+      </SidebarMenuItem>
     </SidebarMenu>
   )
 }

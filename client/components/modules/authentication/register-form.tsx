@@ -38,7 +38,7 @@ export function RegisterForm({
     };
 
     return (
-        <form className={cn("flex flex-col gap-4", className)} {...props}>
+        <form onSubmit={handleRegister} className={cn("flex flex-col gap-4", className)} {...props}>
             <FieldGroup className="gap-4">
                 <div className="flex flex-col items-center gap-1.5 text-center mb-4">
                     <h1 className="text-[28px] font-bold tracking-tight">Unlock the Future</h1>
@@ -99,8 +99,8 @@ export function RegisterForm({
                 </div>
 
                 <div className="mt-2 flex justify-center">
-                    <Button type="submit" className="rounded-full px-37 h-11 text-[14px] font-medium shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-all hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]">
-                        Sign Up Now
+                    <Button disabled={register.isPending} type="submit" className="rounded-full px-37 h-11 text-[14px] font-medium shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-all hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]">
+                        {register.isPending ? "Creating account…" : "Sign Up Now"}
                     </Button>
                 </div>
 

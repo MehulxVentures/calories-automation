@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const EnvSchema = z.object({
-    NEXT_PUBLIC_API_BASE: z.string().url(),
     NEXT_PUBLIC_SERVER_API_BASE: z.string().url(),
     NEXT_PUBLIC_AGENT_API_BASE: z.string().url(),
 });
@@ -9,7 +8,6 @@ export const EnvSchema = z.object({
 export type WebEnv = z.infer<typeof EnvSchema>;
 
 export const env = EnvSchema.parse({
-    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
     NEXT_PUBLIC_SERVER_API_BASE: process.env.NEXT_PUBLIC_SERVER_API_BASE,
     NEXT_PUBLIC_AGENT_API_BASE: process.env.NEXT_PUBLIC_AGENT_API_BASE,
 });

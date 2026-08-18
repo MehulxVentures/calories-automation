@@ -93,8 +93,8 @@ export function LoginForm({
         </div>
 
         <div className="mt-2 flex justify-center">
-          <Button type="submit" className="rounded-full px-37 h-11 text-[14px] font-medium shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-all hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]">
-            Sign In Now
+          <Button disabled={login.isPending} type="submit" className="rounded-full px-37 h-11 text-[14px] font-medium shadow-[0_8px_16px_rgba(0,0,0,0.15)] transition-all hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)]">
+            {login.isPending ? "Signing in…" : "Sign In Now"}
           </Button>
         </div>
 
