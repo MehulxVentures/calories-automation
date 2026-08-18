@@ -1,5 +1,5 @@
-import { AllPasteResponse, CreatePaste, GetAndDelPasteContent, PasteResponse } from "@/types/paste";
-import apiClient from "./axios";
+import { AllPasteResponse, CreatePaste, GetAndDelPasteContent, PasteResponse } from "@/types/auth";
+import apiClient from "../axios";
 
 export const createPasteAPI = (payload: CreatePaste) =>
     apiClient.post<PasteResponse>('/submit', payload).then((r) => r.data);
