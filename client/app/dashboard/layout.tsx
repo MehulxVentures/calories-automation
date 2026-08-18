@@ -16,12 +16,12 @@ const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
             }
         >
             <AppSidebar variant="inset" />
-            <SidebarInset>
+            <SidebarInset className="h-svh overflow-hidden">
                 <SiteHeader />
-                <div className="flex flex-1 flex-col">
-                    <div className="@container/main flex flex-1 flex-col gap-2">
-                        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                            <div>
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="@container/main flex min-h-0 flex-1 flex-col gap-2">
+                        <div className="flex min-h-0 flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
+                            <div className="min-h-0 flex-1">
                                 {children}
                             </div>
                         </div>
