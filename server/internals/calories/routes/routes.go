@@ -13,8 +13,11 @@ type RouteDependencies struct {
 
 func Register(app *gin.Engine, deps RouteDependencies) {
 	group := app.Group("/calories", deps.AuthMiddleware.RequireAuth())
-	group.POST("", deps.CaloriesHandler.Create)
+	group.POST("", deps.CaloriesHandler.CreateManual)
 	group.GET("", deps.CaloriesHandler.List)
 	group.PATCH("/:id", deps.CaloriesHandler.Update)
 	group.DELETE("/:id", deps.CaloriesHandler.Delete)
+
+	agent := app.Group("/agent", deps.AuthMiddleware.RequireAuth())
+	agent.POST("/calories", deps.CaloriesHandler.CreateFromAgent)
 }

@@ -1,7 +1,7 @@
 import { tavily } from "@tavily/core";
 
 const tavilyClient = (apikey: string) => {
-    tavily({ apiKey: apikey });
+	return tavily({ apiKey: apikey });
 }
 
 export default tavilyClient;

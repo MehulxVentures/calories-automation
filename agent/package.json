@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@langchain/community": "^1.1.29",
@@ -13,9 +14,11 @@
     "@langchain/openrouter": "^0.4.8",
     "@tavily/core": "^0.7.7",
     "hono": "^4.13.3",
-    "langchain": "^1.5.9"
+    "langchain": "^1.5.9",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "typescript": "^7.0.2",
     "wrangler": "^4.110.0"
   }
 }

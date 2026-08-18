@@ -19,7 +19,6 @@ type createRequest struct {
 	Fat         float64    `json:"fat" binding:"gte=0"`
 	Ingredients string     `json:"ingredients"`
 	Calories    float64    `json:"calories" binding:"required,gt=0"`
-	Source      string     `json:"source" binding:"omitempty,oneof=agent manual import"`
 	ConsumedAt  *time.Time `json:"consumedAt"`
 }
 
@@ -34,7 +33,15 @@ type updateRequest struct {
 
 func NewHandler(entries *repository.Repository) *Handler { return &Handler{entries: entries} }
 
-func (h *Handler) Create(c *gin.Context) {
+func (h *Handler) CreateManual(c *gin.Context) {
+	h.create(c, "manual")
+}
+
+func (h *Handler) CreateFromAgent(c *gin.Context) {
+	h.create(c, "agent")
+}
+
+func (h *Handler) create(c *gin.Context, source string) {
 	var input createRequest
 	if c.ShouldBindJSON(&input) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "calories must be greater than zero and fat cannot be negative"})
@@ -48,10 +55,6 @@ func (h *Handler) Create(c *gin.Context) {
 	dish := strings.TrimSpace(input.Dish)
 	if dish == "" {
 		dish = "Quick calorie entry"
-	}
-	source := input.Source
-	if source == "" {
-		source = "manual"
 	}
 	consumedAt := time.Now()
 	if input.ConsumedAt != nil {
