@@ -25,13 +25,16 @@ export function createSaveCaloriesTool(apiUrl: string, authorization: string) {
 
 			const body = await response.json<{ entry?: unknown; error?: string }>();
 			if (!response.ok) {
-				throw new Error(body.error ?? "Go API rejected the calorie entry");
+				const detail = body.error ?? `Go API returned ${response.status}`;
+				console.error(JSON.stringify({ event: "save_failed", status: response.status, detail }));
+				throw new Error(detail);
 			}
+
 			return JSON.stringify(body.entry);
 		},
 		{
 			name: "save_calorie_entry",
-			description: "Validate a calorie entry in the required format and save it through the Go API.",
+			description: "Save a calorie entry through the Go API.",
 			schema: calorieEntrySchema,
 		},
 	);
