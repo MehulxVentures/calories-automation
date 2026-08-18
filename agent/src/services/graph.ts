@@ -36,11 +36,51 @@ type BuildOptions = {
 	authorization: string;
 };
 
-function tokenUsage(raw: AIMessage) {
+function tokenUsage(raw?: AIMessage) {
 	return {
-		inputTokens: raw.usage_metadata?.input_tokens ?? 0,
-		outputTokens: raw.usage_metadata?.output_tokens ?? 0,
+		inputTokens: raw?.usage_metadata?.input_tokens ?? 0,
+		outputTokens: raw?.usage_metadata?.output_tokens ?? 0,
 	};
+}
+
+function clearlyReportsConsumption(message: string) {
+	return /\b(?:i|we)\s+(?:just\s+)?(?:ate|had|consumed|drank)\b/i.test(message)
+		|| /\b\d+(?:\.\d+)?\s*(?:calories|kcal)\b/i.test(message);
+}
+
+function textContent(message: AIMessage) {
+	return typeof message.content === "string"
+		? message.content
+		: message.content.map((part) => typeof part === "string" ? part : "text" in part ? String(part.text) : "").join("");
+}
+
+function fallbackExtraction(state: typeof GraphState.State): Extracted {
+	const calorieMatch = state.message.match(/\b(\d+(?:\.\d+)?)\s*(?:calories|kcal)\b/i);
+	const previousFood = [...state.history]
+		.reverse()
+		.find((item) => item.role === "user" && item.content !== state.message && clearlyReportsConsumption(item.content));
+	const cleanDish = (value: string) => value
+		.replace(/\b(?:i|we)\s+(?:just\s+)?(?:ate|had|consumed|drank)\b/gi, "")
+		.replace(/\b(?:for|about)?\s*\d+(?:\.\d+)?\s*(?:calories|kcal)\b/gi, "")
+		.replace(/\b(?:today|now)\b/gi, "")
+		.trim();
+	const dish = cleanDish(state.message) || (previousFood ? cleanDish(previousFood.content) : "") || "Quick calorie entry";
+	return {
+		shouldRecord: clearlyReportsConsumption(state.message),
+		dish,
+		calories: calorieMatch ? Number(calorieMatch[1]) : null,
+		fat: 0,
+		ingredients: "",
+		consumedAt: state.now,
+	};
+}
+
+function caloriesFromSearch(searchResult: string) {
+	const values = [...searchResult.matchAll(/\b(\d+(?:\.\d+)?)\s*(?:calories|kcal)\b/gi)]
+		.map((match) => Number(match[1]))
+		.filter((value) => value > 0 && value < 10000);
+	if (values.length === 0) throw new Error("Tavily returned no usable calorie estimate");
+	return values[0];
 }
 
 export function buildCalorieGraph(options: BuildOptions) {
@@ -50,11 +90,26 @@ export function buildCalorieGraph(options: BuildOptions) {
 
 	const extract = async (state: typeof GraphState.State) => {
 		const structured = chatModel.withStructuredOutput(extractionSchema, { includeRaw: true });
+		const recentContext = state.history.slice(-12);
 		const result = await structured.invoke([
-			["system", `Extract one calorie-consumption entry. Current time is ${state.now}; user timezone is ${state.timezone}. Preserve calories explicitly stated by the user. Never estimate missing calories here.`],
-			["human", state.message],
+			["system", `Extract one calorie-consumption entry from the latest user message and recent conversation. Current time is ${state.now}; user timezone is ${state.timezone}.
+Rules:
+- If the latest message reports eating, drinking, consuming, or gives calories for previously mentioned food, shouldRecord must be true.
+- Resolve short follow-ups such as "100 calories" to the most recently mentioned food.
+- Preserve calories explicitly stated by the user.
+- If food is reported without calories, return calories as null; do not ask questions and do not estimate here.
+- For "just ate", "today", or no stated time, use the current time.
+- Greetings and unrelated questions have shouldRecord false.`],
+			["human", JSON.stringify({ recentContext, latestMessage: state.message })],
 		]);
-		return { extracted: result.parsed, ...tokenUsage(result.raw as AIMessage) };
+		const extracted = result.parsed ?? fallbackExtraction(state);
+		return {
+			extracted: {
+				...extracted,
+				shouldRecord: extracted.shouldRecord || clearlyReportsConsumption(state.message),
+			},
+			...tokenUsage(result.raw as AIMessage),
+		};
 	};
 
 	const search = async (state: typeof GraphState.State) => ({
@@ -67,7 +122,11 @@ export function buildCalorieGraph(options: BuildOptions) {
 			["system", "Use the search evidence to estimate one reasonable calorie entry. Keep the extracted consumption time and food details."],
 			["human", JSON.stringify({ extracted: state.extracted, search: state.searchResult })],
 		]);
-		return { extracted: { ...state.extracted!, ...result.parsed }, ...tokenUsage(result.raw as AIMessage) };
+		const estimated = result.parsed ?? calorieEntrySchema.parse({
+			...state.extracted!,
+			calories: caloriesFromSearch(state.searchResult),
+		});
+		return { extracted: { ...state.extracted!, ...estimated }, ...tokenUsage(result.raw as AIMessage) };
 	};
 
 	const save = async (state: typeof GraphState.State) => {
@@ -84,9 +143,7 @@ export function buildCalorieGraph(options: BuildOptions) {
 			["system", "You are a friendly, concise calorie-tracking assistant. Chat naturally. Do not claim an entry was saved unless the calorie workflow saved it."],
 			...history,
 		]);
-		const reply = typeof result.content === "string"
-			? result.content
-			: result.content.map((part) => typeof part === "string" ? part : "text" in part ? String(part.text) : "").join("");
+		const reply = textContent(result as AIMessage);
 		return { reply, ...tokenUsage(result as AIMessage) };
 	};
 

@@ -10,7 +10,7 @@ import (
 func HealthCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{
-			"server": "Rssfeed server",
+			"server": "Calories server",
 			"status": "ok",
 			"date":   time.Now().Format(time.DateOnly),
 		})

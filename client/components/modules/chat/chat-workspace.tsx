@@ -20,7 +20,9 @@ export function ChatWorkspace() {
     const send = useSendMessage();
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), [messages.data, send.isPending]);
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages.data, send.isPending]);
 
     async function submit(event: FormEvent) {
         event.preventDefault();
