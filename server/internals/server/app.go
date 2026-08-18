@@ -4,9 +4,15 @@ import (
 	"github.com/MehulxVentures/calories-automation/internals/auth/handlers"
 	"github.com/MehulxVentures/calories-automation/internals/auth/middleware"
 	"github.com/MehulxVentures/calories-automation/internals/auth/repository"
-	"github.com/MehulxVentures/calories-automation/internals/auth/routes"
+	authroutes "github.com/MehulxVentures/calories-automation/internals/auth/routes"
 	"github.com/MehulxVentures/calories-automation/internals/auth/services"
+	caloriehandlers "github.com/MehulxVentures/calories-automation/internals/calories/handlers"
+	calorierepository "github.com/MehulxVentures/calories-automation/internals/calories/repository"
+	calorieroutes "github.com/MehulxVentures/calories-automation/internals/calories/routes"
 	"github.com/MehulxVentures/calories-automation/internals/config"
+	usagehandlers "github.com/MehulxVentures/calories-automation/internals/usage/handlers"
+	usagerepository "github.com/MehulxVentures/calories-automation/internals/usage/repository"
+	usageroutes "github.com/MehulxVentures/calories-automation/internals/usage/routes"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,20 +41,32 @@ func New(cfg config.Config, db *pgxpool.Pool) *gin.Engine {
 	app.GET("/health", HealthCheck())
 
 	// Init Repository
-	userRepo := repository.NewUserRepository(db)
+	authRepo := repository.NewUserRepository(db)
+	calorieRepo := calorierepository.NewRepository(db)
+	usageRepo := usagerepository.NewRepository(db)
 
 	// Init Service
 	authService := services.NewAuthService(cfg)
 
 	// Init Handler
-	authHandler := handlers.NewAuthHandler(cfg, authService, userRepo)
+	authHandler := handlers.NewAuthHandler(cfg, authService, authRepo)
+	calorieHandler := caloriehandlers.NewHandler(calorieRepo)
+	usageHandler := usagehandlers.NewHandler(usageRepo)
 
 	// Init Middleware
-	authMiddleware := middleware.NewAuthMiddleware(cfg, authService, userRepo)
+	authMiddleware := middleware.NewAuthMiddleware(cfg, authService, authRepo)
 
 	// Register Routes
-	routes.Register(app, routes.RouteDependencies{
+	authroutes.Register(app, authroutes.RouteDependencies{
 		AuthHandler:    authHandler,
+		AuthMiddleware: authMiddleware,
+	})
+	calorieroutes.Register(app, calorieroutes.RouteDependencies{
+		CaloriesHandler: calorieHandler,
+		AuthMiddleware:  authMiddleware,
+	})
+	usageroutes.Register(app, usageroutes.RouteDependencies{
+		UsageHandler:   usageHandler,
 		AuthMiddleware: authMiddleware,
 	})
 
