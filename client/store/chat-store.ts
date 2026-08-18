@@ -15,5 +15,5 @@ export const useChatStore = create<ChatState>()(persist(
         setActiveConversation: (id) => set({ activeConversationId: id }),
         startNewConversation: () => set({ activeConversationId: null }),
     }),
-    { name: "nitro-chat" },
+    { name: "uli-chat" },
 ));

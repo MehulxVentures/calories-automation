@@ -19,7 +19,7 @@ app.use("/api/v1/*", async (c, next) =>
 	})(c, next),
 );
 
-app.get("/", (c) => c.text("Nitro calorie agent"));
+app.get("/", (c) => c.text("Uli calorie agent"));
 
 app.get("/health", (c) =>
 	c.json({ status: 200, server: "calories agent", date: new Date() }),

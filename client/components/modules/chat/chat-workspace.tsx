@@ -82,7 +82,7 @@ export function ChatWorkspace() {
                 <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
                     <div className="flex items-center gap-2">
                         <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"><MessageCircle className="size-4" /></span>
-                        <div><p className="text-sm font-semibold">Nitro agent</p><p className="text-[10px] text-muted-foreground">Chat naturally · calories save automatically</p></div>
+                        <div><p className="text-sm font-semibold">Uli agent</p><p className="text-[10px] text-muted-foreground">Chat naturally · calories save automatically</p></div>
                     </div>
                     <Button variant="ghost" size="sm" className="md:hidden" onClick={startNew}><Plus className="size-4" /> New</Button>
                 </header>
@@ -94,7 +94,7 @@ export function ChatWorkspace() {
                                     <Sparkles className="size-5" />
                                 </div>
                                 <h2 className="text-xl font-semibold">What did you eat today?</h2>
-                                <p className="mt-2 text-sm text-muted-foreground">Chat normally, or tell Nitro what you consumed. Calories are logged automatically.</p>
+                                <p className="mt-2 text-sm text-muted-foreground">Chat normally, or tell Uli what you consumed. Calories are logged automatically.</p>
                             </div>
                         )}
                         <div className="mt-auto space-y-4">

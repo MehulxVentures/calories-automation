@@ -1,6 +1,6 @@
 import { ChatOpenRouter } from "@langchain/openrouter";
 
-export const modelId = "dots-studio/dots-3-note-preview:free"
+export const modelId = "google/gemini-3.7-flash"
 
 export const model = (apikey: string) => {
     return new ChatOpenRouter({

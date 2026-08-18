@@ -20,5 +20,5 @@ export const useAuthStore = create<AuthState>()(persist(
         setUser: (user) => set({ user }),
         clearSession: () => set({ token: null, user: null }),
     }),
-    { name: "nitro-auth" },
+    { name: "uli-auth" },
 ));

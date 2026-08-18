@@ -89,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <Link href="/">
                 <HugeiconsIcon icon={Fire02FreeIcons} strokeWidth={2} className="size-5!" />
-                <span className="text-base font-semibold">Nitro.</span>
+                <span className="text-base font-semibold">Uli.</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

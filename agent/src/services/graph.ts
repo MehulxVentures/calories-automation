@@ -10,16 +10,16 @@ import { type CalorieEntry, calorieEntrySchema, createSaveCaloriesTool } from ".
 const extractionSchema = z.object({
 	shouldRecord: z
 		.boolean()
-		.describe("True when the user reports eating, drinking, or consuming food/calories — including short confirmations like 'yes' that refer to previously mentioned food"),
+		.describe("true = user reports food/drink consumption or confirms a prior food mention; false = greeting or unrelated message"),
 	dish: z
 		.string()
 		.default("Quick calorie entry")
-		.describe("ONLY the food or drink name with quantity, e.g. '2 plates of chicken shawarma'. Strip all filler words like 'hey', 'i just ate', 'today', etc."),
+		.describe("Food name and quantity only. Example: '2 plates of chicken shawarma'. Never include words like 'i ate' or 'hey'."),
 	calories: z
 		.number()
 		.positive()
 		.nullable()
-		.describe("The exact calorie number stated by the user, or null when not provided"),
+		.describe("Exact number the user stated, or null if not stated"),
 	fat: z.number().nonnegative().default(0),
 	ingredients: z.string().default(""),
 	consumedAt: z.string().datetime({ offset: true }),
@@ -43,8 +43,6 @@ const GraphState = Annotation.Root({
 	outputTokens: Annotation<number>({ reducer: (a, b) => a + b, default: () => 0 }),
 });
 
-// ── Build options ────────────────────────────────────────────────────────────
-
 type BuildOptions = {
 	openRouterApiKey: string;
 	tavilyApiKey: string;
@@ -61,50 +59,56 @@ function tokenUsage(raw?: AIMessage) {
 	};
 }
 
-/** Broad check — intentionally loose to catch typos and casual phrasing. */
-function looksLikeFoodReport(message: string): boolean {
-	const lower = message.toLowerCase();
-	// Direct consumption verbs (handles typos like "i just a ate")
-	if (/\b(?:i|we)\b.*\b(?:ate|eat|had|consumed|drank|drinking|eating)\b/i.test(message)) return true;
-	// Calorie / kcal mentions
-	if (/\b\d+(?:\.\d+)?\s*(?:calories|kcal|cals)\b/i.test(message)) return true;
-	// "plate of", "bowl of", "cup of", "glass of" + food
-	if (/\b(?:plate|plates|bowl|bowls|cup|cups|glass|piece|pieces|serving|servings)\s+of\b/i.test(message)) return true;
-	// Common food-related phrases
-	if (/\b(?:just\s+)?(?:ate|had|eaten|finished)\b/i.test(message)) return true;
-	return false;
-}
-
-/** Check if the message is a short confirmation referencing earlier food. */
-function isConfirmation(message: string): boolean {
-	return /^\s*(?:yes|yeah|yep|yea|sure|ok|okay|y|log\s+it|save\s+it|do\s+it|go\s+ahead)\s*[.!]?\s*$/i.test(message);
-}
-
-function textContent(message: AIMessage): string {
-	if (typeof message.content === "string") return message.content;
-	return message.content
-		.map((part) => (typeof part === "string" ? part : "text" in part ? String(part.text) : ""))
+function textContent(msg: AIMessage): string {
+	if (typeof msg.content === "string") return msg.content;
+	return msg.content
+		.map((p) => (typeof p === "string" ? p : "text" in p ? String(p.text) : ""))
 		.join("");
 }
 
-function pickCaloriesFromSearch(searchResult: string): number {
-	const values = [...searchResult.matchAll(/\b(\d+(?:\.\d+)?)\s*(?:calories|kcal|cals)\b/gi)]
-		.map((m) => Number(m[1]))
-		.filter((v) => v > 0 && v < 10_000);
-	if (values.length === 0) throw new Error("Tavily returned no usable calorie estimate");
-	return values[0];
+/**
+ * Defensive check on converse output.
+ * If the model hallucinates a save confirmation, we replace it
+ * because converse never actually saves anything.
+ */
+function sanitizeConverseReply(reply: string): string {
+	const bad = /\b(?:logged|saved|recorded|added|tracked)\b.*\b(?:calorie|kcal|entry|food)\b/i;
+	if (bad.test(reply)) {
+		return "Hey! What did you eat? I can track it for you.";
+	}
+	return reply;
 }
 
-/** Strip conversational filler from a raw message, keeping only the food name + quantity. */
-function cleanDishName(raw: string): string {
-	return raw
-		.replace(/\b(?:hey|hi|hello|yo)\b[,.]?\s*/gi, "")
-		.replace(/\b(?:i|we)\s+(?:\w+\s+)?(?:just\s+)?(?:ate|eat|had|consumed|drank|finished)\s*/gi, "")
-		.replace(/\b(?:for|about|around)?\s*\d+(?:\.\d+)?\s*(?:calories|kcal|cals)\b/gi, "")
-		.replace(/\b(?:today|now|just now|right now|for (?:lunch|dinner|breakfast|snack))\b/gi, "")
-		.replace(/[.,!?]+$/g, "")
-		.replace(/\s{2,}/g, " ")
-		.trim() || "Quick calorie entry";
+// ── Extraction prompt ────────────────────────────────────────────────────────
+
+function extractionPrompt(now: string, timezone: string): string {
+	return `You are a structured-data extractor for a calorie tracker. Parse the user's latest message and recent conversation into a single JSON entry.
+
+CURRENT TIME: ${now}
+USER TIMEZONE: ${timezone}
+
+FIELD RULES:
+
+shouldRecord (boolean)
+  true  → the message describes food/drink consumption, states calories, OR is a confirmation ("yes", "ok", "sure", "yep") referring to food mentioned earlier in the conversation.
+  false → the message is a greeting, off-topic question, or unrelated small talk with NO food context in recent history.
+  When in doubt, prefer true.
+
+dish (string)
+  The food or drink name with quantity. Strip everything else.
+  INPUT: "hey i just a ate 2 plate of chicken swarma"  →  OUTPUT: "2 plates of chicken shawarma"
+  INPUT: "had a big mac and fries for lunch today"      →  OUTPUT: "big mac and fries"
+  INPUT: "200 calories of almonds"                      →  OUTPUT: "almonds"
+  INPUT: "i ate rice"                                   →  OUTPUT: "rice"
+  INPUT: (previous msg mentioned biryani, user says "yes") → OUTPUT: "biryani"
+
+calories (number | null)
+  The EXACT number the user wrote (e.g. "800 calories" → 800).
+  null if the user did NOT write a number. Never estimate.
+
+fat (number) — 0 if unknown.
+ingredients (string) — "" if unknown.
+consumedAt (ISO 8601) — current time unless the user specified a different time.`;
 }
 
 // ── Graph builder ────────────────────────────────────────────────────────────
@@ -114,86 +118,68 @@ export function buildCalorieGraph(options: BuildOptions) {
 	const searchTool = createCalorieSearchTool(options.tavilyApiKey);
 	const saveTool = createSaveCaloriesTool(options.apiUrl, options.authorization);
 
-	// ── Node: extract ────────────────────────────────────────────────────────
+	// ── extract ──────────────────────────────────────────────────────────────
 	const extract = async (state: typeof GraphState.State) => {
 		const recentContext = state.history.slice(-12);
 		const structured = chatModel.withStructuredOutput(extractionSchema, { includeRaw: true });
 
 		const result = await structured.invoke([
-			[
-				"system",
-				`Extract one calorie-consumption entry from the latest user message and recent conversation.
-Current time: ${state.now}  |  User timezone: ${state.timezone}
-
-Rules:
-- If the latest message reports eating, drinking, consuming, or provides calories for previously mentioned food, set shouldRecord = true.
-- Short confirmations like "yes", "sure", "ok" that follow a food mention or calorie estimate in conversation history count as shouldRecord = true. Resolve them to the most recently discussed food.
-- The "dish" field must contain ONLY the food/drink name with quantity (e.g. "2 plates of chicken shawarma", "a bowl of rice", "3 samosas"). Strip all conversational filler like "hey", "i just ate", "today", "for lunch", etc.
-- Preserve calories explicitly stated by the user. If the user did not state a calorie number, set calories = null — do NOT estimate.
-- For "just ate", "today", or no stated time, use the current time.
-- Greetings, questions unrelated to food, and small talk have shouldRecord = false.`,
-			],
+			["system", extractionPrompt(state.now, state.timezone)],
 			["human", JSON.stringify({ recentContext, latestMessage: state.message })],
 		]);
 
-		let extracted = result.parsed;
-
-		// Hard override: if the LLM missed an obvious food report or confirmation, force shouldRecord
-		if (extracted && !extracted.shouldRecord) {
-			if (looksLikeFoodReport(state.message)) {
-				extracted = { ...extracted, shouldRecord: true };
-			}
-			if (isConfirmation(state.message) && recentContext.some((m) => looksLikeFoodReport(m.content))) {
-				extracted = { ...extracted, shouldRecord: true };
-			}
-		}
-
-		// If structured output completely failed, build a minimal extraction
-		if (!extracted) {
-			const calorieMatch = state.message.match(/\b(\d+(?:\.\d+)?)\s*(?:calories|kcal|cals)\b/i);
-			extracted = {
-				shouldRecord: looksLikeFoodReport(state.message) || isConfirmation(state.message),
-				dish: cleanDishName(state.message),
-				calories: calorieMatch ? Number(calorieMatch[1]) : null,
-				fat: 0,
-				ingredients: "",
-				consumedAt: state.now,
+		if (!result.parsed) {
+			console.error(JSON.stringify({ event: "extraction_failed", message: state.message }));
+			return {
+				extracted: {
+					shouldRecord: false,
+					dish: "Quick calorie entry",
+					calories: null,
+					fat: 0,
+					ingredients: "",
+					consumedAt: state.now,
+				} satisfies Extracted,
+				...tokenUsage(result.raw as AIMessage),
 			};
 		}
 
-		return { extracted, ...tokenUsage(result.raw as AIMessage) };
+		return { extracted: result.parsed, ...tokenUsage(result.raw as AIMessage) };
 	};
 
-	// ── Node: search ─────────────────────────────────────────────────────────
+	// ── search ───────────────────────────────────────────────────────────────
 	const search = async (state: typeof GraphState.State) => ({
 		searchResult: await searchTool.invoke({ food: state.extracted!.dish }),
 	});
 
-	// ── Node: estimate ───────────────────────────────────────────────────────
+	// ── estimate ─────────────────────────────────────────────────────────────
 	const estimate = async (state: typeof GraphState.State) => {
 		const structured = chatModel.withStructuredOutput(calorieEntrySchema, { includeRaw: true });
 
 		const result = await structured.invoke([
 			[
 				"system",
-				"Use the search evidence to estimate one reasonable calorie value. Return a single number — not a range. Keep the extracted dish name and consumption time.",
+				"You are a calorie estimator. Given the food and search evidence, return a single reasonable calorie number. Do not return a range. Keep the dish name and consumedAt exactly as given.",
 			],
-			["human", JSON.stringify({ extracted: state.extracted, search: state.searchResult })],
+			["human", JSON.stringify({ food: state.extracted, evidence: state.searchResult })],
 		]);
 
-		const estimated = result.parsed ?? calorieEntrySchema.parse({
-			...state.extracted!,
-			calories: pickCaloriesFromSearch(state.searchResult),
-		});
+		if (!result.parsed) {
+			const m = state.searchResult.match(/\b(\d+(?:\.\d+)?)\s*(?:calories|kcal)\b/i);
+			return {
+				extracted: { ...state.extracted!, calories: m ? Number(m[1]) : 200 },
+				wasEstimated: true,
+				...tokenUsage(result.raw as AIMessage),
+			};
+		}
 
 		return {
-			extracted: { ...state.extracted!, ...estimated },
+			extracted: { ...state.extracted!, ...result.parsed },
 			wasEstimated: true,
 			...tokenUsage(result.raw as AIMessage),
 		};
 	};
 
-	// ── Node: save ───────────────────────────────────────────────────────────
+	// ── save ─────────────────────────────────────────────────────────────────
 	const save = async (state: typeof GraphState.State) => {
 		const entry: CalorieEntry = {
 			dish: state.extracted!.dish,
@@ -204,15 +190,11 @@ Rules:
 		};
 
 		const saved = JSON.parse(await saveTool.invoke(entry));
-		const approx = state.wasEstimated ? " approximately" : "";
-
-		return {
-			savedEntry: saved,
-			reply: `Added${approx} ${entry.calories} calories for ${entry.dish}.`,
-		};
+		const prefix = state.wasEstimated ? "Added approximately" : "Added";
+		return { savedEntry: saved, reply: `${prefix} ${entry.calories} calories for ${entry.dish}.` };
 	};
 
-	// ── Node: converse ───────────────────────────────────────────────────────
+	// ── converse (no save capability — purely chat) ──────────────────────────
 	const converse = async (state: typeof GraphState.State) => {
 		const history = state.history.map(
 			(m) => [m.role === "tool" ? "assistant" : m.role, m.content] as ["user" | "assistant", string],
@@ -221,20 +203,16 @@ Rules:
 		const result = await chatModel.invoke([
 			[
 				"system",
-				`You are Nitro, a friendly and concise calorie-tracking assistant.
-Rules:
-- Respond briefly and naturally to greetings and general questions.
-- NEVER claim that a calorie entry was saved, logged, or recorded. You do not have that ability in this mode.
-- If the user mentions food, tell them you can track it and ask them to share what they ate.
-- Do not use emojis.`,
+				"You are Uli, a calorie-tracking chatbot. In this turn you are ONLY making small talk. You have NOT saved any food entry. You CANNOT save entries. Never say you logged, saved, added, recorded, or tracked anything. Keep responses to one or two short sentences. No emojis.",
 			],
 			...history,
 		]);
 
-		return { reply: textContent(result as AIMessage), ...tokenUsage(result as AIMessage) };
+		const raw = textContent(result as AIMessage);
+		return { reply: sanitizeConverseReply(raw), ...tokenUsage(result as AIMessage) };
 	};
 
-	// ── Build graph ──────────────────────────────────────────────────────────
+	// ── graph ────────────────────────────────────────────────────────────────
 	return new StateGraph(GraphState)
 		.addNode("extract", extract)
 		.addNode("search", search)

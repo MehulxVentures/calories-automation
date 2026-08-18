@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nitro — calorie tracking agent",
+  title: "Uli — calorie tracking agent",
   description: "Track calories naturally through conversation.",
 };
 
