@@ -1,22 +1,7 @@
-import { View, Text, StyleSheet } from "react-native";
+import ProfileScreen from "@/modules/profile/screens/profile-screen";
 
-export default function ProfileScreen() {
+export default function Profile() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Profile</Text>
-    </View>
+    <ProfileScreen />
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#101010",
-  },
-  text: {
-    color: "#fff",
-    fontSize: 18,
-  },
-});
+};
