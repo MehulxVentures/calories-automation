@@ -29,6 +29,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: PRIMARY_BLACK },
         tabBarActiveTintColor: PRIMARY_GREEN,
         tabBarInactiveTintColor: INACTIVE_COLOR,
         tabBarStyle: {
@@ -43,6 +44,8 @@ export default function TabLayout() {
           fontWeight: "600",
           marginTop: 2,
         },
+
+        animation: "shift",
       }}
     >
       <Tabs.Screen
@@ -68,11 +71,7 @@ export default function TabLayout() {
         options={{
           title: "Fitness",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon
-              name="fitness"
-              color={color}
-              focused={focused}
-            />
+            <TabIcon name="fitness" color={color} focused={focused} />
           ),
         }}
       />

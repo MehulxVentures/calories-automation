@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useRef, useState } from "react";
 import {
-  Animated,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
   Pressable,
   ScrollView,
   StyleSheet,
@@ -69,13 +71,12 @@ const week = [
 
 export default function FitnessScreen() {
   const [foods, setFoods] = useState(initialFoods);
-  const [modalOpen, setModalOpen] = useState(false);
   const [food, setFood] = useState("");
   const [calories, setCalories] = useState("");
   const [serving, setServing] = useState("");
   const [meal, setMeal] = useState<MealType>("Breakfast");
-  const scrimOpacity = useRef(new Animated.Value(0)).current;
-  const sheetPosition = useRef(new Animated.Value(460)).current;
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetSnapPoints = useMemo(() => ["72%", "94%"], []);
 
   const consumed = useMemo(
     () => foods.reduce((sum, item) => sum + item.calories, 0),
@@ -85,45 +86,32 @@ export default function FitnessScreen() {
   const progress = Math.min(consumed / target, 1);
 
   function openModal() {
-    setModalOpen(true);
-    requestAnimationFrame(() => {
-      Animated.parallel([
-        Animated.timing(scrimOpacity, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sheetPosition, {
-          toValue: 0,
-          damping: 24,
-          stiffness: 230,
-          mass: 0.9,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
+    sheetRef.current?.present();
   }
 
   function closeModal() {
-    Animated.parallel([
-      Animated.timing(scrimOpacity, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetPosition, {
-        toValue: 460,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setModalOpen(false);
-      setFood("");
-      setCalories("");
-      setServing("");
-      setMeal("Breakfast");
-    });
+    sheetRef.current?.dismiss();
   }
+
+  const resetForm = useCallback(() => {
+    setFood("");
+    setCalories("");
+    setServing("");
+    setMeal("Breakfast");
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.68}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
 
   function addFood() {
     const calorieValue = Number(calories);
@@ -323,123 +311,116 @@ export default function FitnessScreen() {
         </Pressable>
       </ScrollView>
 
-      <Modal
-        visible={modalOpen}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        navigationBarTranslucent
-        onRequestClose={closeModal}
+      <BottomSheetModal
+        ref={sheetRef}
+        index={0}
+        snapPoints={sheetSnapPoints}
+        onDismiss={resetForm}
+        backdropComponent={renderBackdrop}
+        enablePanDownToClose
+        enableDynamicSizing={false}
+        keyboardBehavior="extend"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+        backgroundStyle={styles.sheetBackground}
+        handleStyle={styles.handleArea}
+        handleIndicatorStyle={styles.handle}
       >
-        <KeyboardAvoidingView
-          style={styles.modalRoot}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.sheetContent}
         >
-          <Animated.View style={[styles.scrim, { opacity: scrimOpacity }]}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeModal} />
-          </Animated.View>
-          <Animated.View
-            style={[
-              styles.sheetMotion,
-              { transform: [{ translateY: sheetPosition }] },
-            ]}
-          >
-            <SafeAreaView edges={["bottom"]} style={styles.sheet}>
-              <View style={styles.handle} />
-              <View style={styles.sheetHeader}>
-                <View>
-                  <Text style={styles.sheetTitle}>Add food</Text>
-                  <Text style={styles.sheetSubtitle}>
-                    Log calories with useful details
-                  </Text>
-                </View>
-                <Pressable onPress={closeModal} style={styles.closeButton}>
-                  <Ionicons name="close" size={20} color="#FFF" />
-                </Pressable>
-              </View>
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={styles.sheetTitle}>Add food</Text>
+              <Text style={styles.sheetSubtitle}>
+                Log calories with useful details
+              </Text>
+            </View>
+            <Pressable onPress={closeModal} style={styles.closeButton}>
+              <Ionicons name="close" size={20} color="#FFF" />
+            </Pressable>
+          </View>
 
-              <Text style={styles.inputLabel}>FOOD NAME</Text>
+          <Text style={styles.inputLabel}>FOOD NAME</Text>
+          <TextInput
+            value={food}
+            onChangeText={setFood}
+            placeholder="e.g. Grilled paneer wrap"
+            placeholderTextColor="#626262"
+            style={styles.input}
+            autoFocus
+          />
+
+          <Text style={styles.inputLabel}>MEAL</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.mealChoices}
+          >
+            {(["Breakfast", "Lunch", "Snack", "Dinner"] as MealType[]).map(
+              (option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => setMeal(option)}
+                  style={[
+                    styles.mealChoice,
+                    meal === option && styles.mealChoiceActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.mealChoiceText,
+                      meal === option && styles.mealChoiceTextActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              ),
+            )}
+          </ScrollView>
+
+          <View style={styles.inputRow}>
+            <View style={styles.inputColumn}>
+              <Text style={styles.inputLabel}>CALORIES</Text>
+              <View style={styles.inputWithUnit}>
+                <TextInput
+                  value={calories}
+                  onChangeText={setCalories}
+                  placeholder="0"
+                  placeholderTextColor="#626262"
+                  keyboardType="number-pad"
+                  style={styles.unitInput}
+                />
+                <Text style={styles.unitText}>kcal</Text>
+              </View>
+            </View>
+            <View style={styles.inputColumn}>
+              <Text style={styles.inputLabel}>SERVING</Text>
               <TextInput
-                value={food}
-                onChangeText={setFood}
-                placeholder="e.g. Grilled paneer wrap"
+                value={serving}
+                onChangeText={setServing}
+                placeholder="1 bowl"
                 placeholderTextColor="#626262"
                 style={styles.input}
-                autoFocus
               />
+            </View>
+          </View>
 
-              <Text style={styles.inputLabel}>MEAL</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.mealChoices}
-              >
-                {(["Breakfast", "Lunch", "Snack", "Dinner"] as MealType[]).map(
-                  (option) => (
-                    <Pressable
-                      key={option}
-                      onPress={() => setMeal(option)}
-                      style={[
-                        styles.mealChoice,
-                        meal === option && styles.mealChoiceActive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.mealChoiceText,
-                          meal === option && styles.mealChoiceTextActive,
-                        ]}
-                      >
-                        {option}
-                      </Text>
-                    </Pressable>
-                  ),
-                )}
-              </ScrollView>
-
-              <View style={styles.inputRow}>
-                <View style={styles.inputColumn}>
-                  <Text style={styles.inputLabel}>CALORIES</Text>
-                  <View style={styles.inputWithUnit}>
-                    <TextInput
-                      value={calories}
-                      onChangeText={setCalories}
-                      placeholder="0"
-                      placeholderTextColor="#626262"
-                      keyboardType="number-pad"
-                      style={styles.unitInput}
-                    />
-                    <Text style={styles.unitText}>kcal</Text>
-                  </View>
-                </View>
-                <View style={styles.inputColumn}>
-                  <Text style={styles.inputLabel}>SERVING</Text>
-                  <TextInput
-                    value={serving}
-                    onChangeText={setServing}
-                    placeholder="1 bowl"
-                    placeholderTextColor="#626262"
-                    style={styles.input}
-                  />
-                </View>
-              </View>
-
-              <Pressable
-                disabled={!food.trim() || !Number(calories)}
-                onPress={addFood}
-                style={[
-                  styles.saveButton,
-                  (!food.trim() || !Number(calories)) &&
-                    styles.saveButtonDisabled,
-                ]}
-              >
-                <Text style={styles.saveButtonText}>Add to today</Text>
-                <Ionicons name="arrow-forward" size={18} color={INK} />
-              </Pressable>
-            </SafeAreaView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
+          <Pressable
+            disabled={!food.trim() || !Number(calories)}
+            onPress={addFood}
+            style={[
+              styles.saveButton,
+              (!food.trim() || !Number(calories)) && styles.saveButtonDisabled,
+            ]}
+          >
+            <Text style={styles.saveButtonText}>Add to today</Text>
+            <Ionicons name="arrow-forward" size={18} color={INK} />
+          </Pressable>
+        </BottomSheetScrollView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
@@ -764,28 +745,21 @@ const styles = StyleSheet.create({
   manualCopy: { flex: 1, marginLeft: 13 },
   manualTitle: { color: "#FFF", fontSize: 13, fontWeight: "800" },
   manualText: { color: MUTED, fontSize: 8.5, marginTop: 4 },
-  modalRoot: { flex: 1, justifyContent: "flex-end" },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,.7)",
-  },
-  sheetMotion: { width: "100%" },
-  sheet: {
+  sheetBackground: {
     backgroundColor: "#171717",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 18,
-    paddingBottom: 10,
     borderWidth: 1,
     borderColor: "#303030",
   },
+  sheetContent: {
+    paddingHorizontal: 18,
+    paddingBottom: 28,
+  },
+  handleArea: { paddingTop: 10, paddingBottom: 5 },
   handle: {
-    width: 39,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#444",
-    alignSelf: "center",
-    marginTop: 9,
+    width: 42,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#555",
   },
   sheetHeader: {
     flexDirection: "row",

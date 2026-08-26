@@ -1,5 +1,8 @@
 import UserAvatar from "@/modules/profile/components/profile-icon";
+import { NotificationModal } from "@/modules/notifications/components/notification-modal";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
+import { useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -50,6 +53,7 @@ const meals = [
 ];
 
 export default function HomeScreen() {
+  const notificationRef = useRef<BottomSheetModal>(null);
   const remaining = daily.target - daily.consumed;
   const progress = daily.consumed / daily.target;
 
@@ -71,7 +75,10 @@ export default function HomeScreen() {
             <Text style={styles.name}>{daily.name} 👋</Text>
           </View>
 
-          <Pressable style={styles.headerButton}>
+          <Pressable
+            onPress={() => notificationRef.current?.present()}
+            style={styles.headerButton}
+          >
             <Ionicons name="notifications-outline" size={21} color="#FFF" />
             <View style={styles.notificationDot} />
           </Pressable>
@@ -251,6 +258,7 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={18} color="#6F765F" />
         </View>
       </ScrollView>
+      <NotificationModal sheetRef={notificationRef} />
     </SafeAreaView>
   );
 }

@@ -2,6 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import UserAvatar from "@/modules/profile/components/profile-icon";
+import { NotificationModal } from "@/modules/notifications/components/notification-modal";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useRef } from "react";
+import SettingsBtn from "../components/settings-btn";
 
 const GREEN = "#C5FF27";
 const INK = "#101010";
@@ -29,6 +33,8 @@ const week = [
 ];
 
 export default function ProfileScreen() {
+  const notificationRef = useRef<BottomSheetModal>(null);
+
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
       <ScrollView
@@ -42,13 +48,16 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.topActions}>
-            <Pressable style={styles.iconButton}>
+            <Pressable
+              onPress={() => notificationRef.current?.present()}
+              style={styles.iconButton}
+            >
               <Ionicons name="notifications-outline" size={20} color="#FFF" />
               <View style={styles.notificationDot} />
             </Pressable>
-            <Pressable style={styles.iconButton}>
-              <Ionicons name="settings-outline" size={20} color="#FFF" />
-            </Pressable>
+            <View style={styles.iconButton}>
+              <SettingsBtn />
+            </View>
           </View>
         </View>
 
@@ -76,14 +85,20 @@ export default function ProfileScreen() {
           <View style={styles.divider} />
           <Stat icon="ribbon" value={`${demoUser.level}`} label="Level" />
           <View style={styles.divider} />
-          <Stat icon="calendar" value={`${demoUser.days}`} label="Active days" />
+          <Stat
+            icon="calendar"
+            value={`${demoUser.days}`}
+            label="Active days"
+          />
         </View>
 
         <View style={styles.weekCard}>
           <View style={styles.sectionHeading}>
             <View>
               <Text style={styles.sectionTitle}>Your consistency</Text>
-              <Text style={styles.sectionSubtitle}>4 of 7 daily goals completed</Text>
+              <Text style={styles.sectionSubtitle}>
+                4 of 7 daily goals completed
+              </Text>
             </View>
             <View style={styles.streakPill}>
               <Ionicons name="flame" size={14} color={INK} />
@@ -95,10 +110,7 @@ export default function ProfileScreen() {
             {week.map((item) => (
               <View
                 key={item.day}
-                style={[
-                  styles.day,
-                  item.state === "today" && styles.today,
-                ]}
+                style={[styles.day, item.state === "today" && styles.today]}
               >
                 <View
                   style={[
@@ -179,6 +191,7 @@ export default function ProfileScreen() {
           />
         </View>
       </ScrollView>
+      <NotificationModal sheetRef={notificationRef} />
     </SafeAreaView>
   );
 }
@@ -338,9 +351,21 @@ const styles = StyleSheet.create({
   },
   streakPillText: { color: INK, fontSize: 11, fontWeight: "900" },
   weekRow: { flexDirection: "row", justifyContent: "space-between" },
-  day: { width: 39, height: 65, borderRadius: 13, alignItems: "center", paddingTop: 8 },
+  day: {
+    width: 39,
+    height: 65,
+    borderRadius: 13,
+    alignItems: "center",
+    paddingTop: 8,
+  },
   today: { borderWidth: 1.5, borderColor: GREEN, backgroundColor: "#20251A" },
-  dayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#777", marginBottom: 7 },
+  dayDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#777",
+    marginBottom: 7,
+  },
   doneDot: { backgroundColor: GREEN },
   futureDot: { backgroundColor: "#383838" },
   dayName: { color: MUTED, fontSize: 9 },
@@ -368,11 +393,31 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-6deg" }],
   },
   progressCopy: { flex: 1, marginLeft: 17 },
-  cardKicker: { color: GREEN, fontSize: 8, fontWeight: "900", letterSpacing: 1.3 },
+  cardKicker: {
+    color: GREEN,
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
   cardTitle: { color: "#FFF", fontSize: 16, fontWeight: "800", marginTop: 5 },
-  cardDescription: { color: MUTED, fontSize: 10.5, lineHeight: 16, marginTop: 5 },
-  progressTrack: { height: 5, borderRadius: 3, backgroundColor: "#39402E", marginTop: 12 },
-  progressFill: { width: "92%", height: 5, borderRadius: 3, backgroundColor: GREEN },
+  cardDescription: {
+    color: MUTED,
+    fontSize: 10.5,
+    lineHeight: 16,
+    marginTop: 5,
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#39402E",
+    marginTop: 12,
+  },
+  progressFill: {
+    width: "92%",
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: GREEN,
+  },
   progressLabel: { color: "#A8A8A8", fontSize: 8, marginTop: 6 },
   challengeCard: {
     minHeight: 113,
@@ -410,9 +455,31 @@ const styles = StyleSheet.create({
     borderColor: "#282828",
     overflow: "hidden",
   },
-  settingRow: { height: 62, flexDirection: "row", alignItems: "center", paddingHorizontal: 13 },
-  settingIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#252A1D", alignItems: "center", justifyContent: "center" },
-  settingTitle: { flex: 1, color: "#E8E8E8", fontSize: 12, fontWeight: "600", marginLeft: 11 },
+  settingRow: {
+    height: 62,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 13,
+  },
+  settingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: "#252A1D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingTitle: {
+    flex: 1,
+    color: "#E8E8E8",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 11,
+  },
   settingValue: { color: MUTED, fontSize: 10, marginRight: 7 },
-  settingDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#292929", marginLeft: 58 },
+  settingDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#292929",
+    marginLeft: 58,
+  },
 });
